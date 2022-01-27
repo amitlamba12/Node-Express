@@ -1,0 +1,67 @@
+const express=require('express')
+
+const app=express()
+app.use(express.urlencoded({extended:false}))
+app.use(express.json())
+const users=[
+    {id:1,name:'Amit Kumar',Course:'BCA',Technology:'NodeJS'},
+    {id:2,name:'Anmol Chauhan',Course:'BCA',Technology:'NodeJS'},
+    {id:3,name:'Pankaj Yadav',Course:'BCA',Technology:'NodeJS'},
+    {id:4,name:'Shivam Sharma ',Course:'BCA',Technology:'NodeJS'},
+    {id:5,name:'Sachin Kumar',Course:'BCA',Technology:'NodeJS'}]
+
+//Create Server
+app.listen(3000,()=>{
+    console.log("Server is Started Port No : 3000")
+})
+
+//Print All The Users
+app.get('/users',(req,res)=>{
+    res.send(users)
+    res.end()
+})
+
+//Print Only One Person
+app.get('/users/:id',(req,res)=>{
+    const id=req.params.id
+    const match=users.find((user)=>user.id==id)
+    if (match) res.status(200).send(match);
+    else res.status(400).send('File Not Found')
+})
+
+
+// Delete the One Item
+app.delete('/delete/:id',(req,res)=>{
+    const id=parseInt(req.params.id)
+    const index=users.findIndex(user=>user.id===id)
+    if(index>=0){
+        users.splice(index,1)
+        console.log(users)
+        res.send(users)
+        res.end()
+    }
+    else{
+            res.status(404).json({Message: "File Not Found"})
+        }
+})
+
+
+//Insert The Item
+app.post('/posts',(req,res)=>{
+   users.push(req.body)
+   console.log(req.body)
+   console.log(users)
+   res.end()
+})
+
+//Update the Item
+
+app.put('/update/:id',(req,res)=>{
+    const id=req.params.id
+     users[id].name=req.body.name
+     users[id].Course=req.body.course
+     users[id].Technology=req.body.Technology
+     res.status(201).json({Message: "File Found"})
+     console.log(users)
+     res.end()
+})
