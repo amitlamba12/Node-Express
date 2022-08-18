@@ -1,0 +1,230 @@
+const db = require("../models");
+const Property = db.properties;
+const PropertyImages = db.propertyimages;
+const Op = db.Sequelize.Op;
+const { deploy } = require('../../../smart_contract/smart');
+const { properties } = require("../models");
+//const { myFunc1 } = require("../../../smart_contract/run");
+
+// Retrieve all Tutorials from the database.
+exports.findAll = async (req, res) => {
+  await Property.findAll({
+    include: [{
+      model: PropertyImages,
+      as:'PropertyImages_Detail'
+    }]
+  })
+    .then((data) => {
+      res.send(data);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving Property.",
+      });
+    });
+};
+
+//Get properties by property status
+
+exports.findByStatus = async (req, res) => {
+  await Property.findAll({
+    where: {
+      status: "publish",
+    },
+  })
+    .then((data) => {
+      res.send(data);
+    })
+    .catch((err) => {
+      res.status(500).send({
+        message:
+          err.message || "Some error occurred while retrieving Property.",
+      });
+    });
+};
+
+exports.findOne = async (req, res) => {
+  const id = req.params.id;
+  // Property.findByPk(id)
+  //   .then((data) => {
+  //     if (data) {
+  //       res.send(data);
+  //     } else {
+  //       res.status(404).send({
+  //         message: `Cannot find Property with id=${id}.`,
+  //       });
+  //     }
+  //   })
+  //   .catch((err) => {
+  //     res.status(500).send({
+  //       message: "Error retrieving Property with id=" + id,
+  //     });
+  //   });
+  try {
+    const fetchPropertyImages = await Property.findAll({
+      include: [{ model: PropertyImages, as: "PropertyImages_Detail" }],
+      where: {
+        id: id,
+      },
+    });
+    return res.status(201).json(fetchPropertyImages);
+  } catch (error) {
+    return res.status(500).json("Something went Wrong");
+  }
+};
+
+// @desc    Create and Save a new property
+// @route   Post /
+// @access  Public
+exports.create = async (req, res) => {
+
+
+
+
+
+  const PropertyData = req.body;
+  const PropertyImage = req?.files?.PropertyImage; //Array
+  const PropertyAvatar = req?.files?.PropertyAvatar?.[0]?.path;
+
+  if (!PropertyAvatar) {
+    return res.status(404).json({
+      message: `Main Image field cannot be empty`,
+    });
+  }
+  if (!PropertyImage) {
+    return res.status(404).json({
+      message: `Gallery Images field cannot be empty`,
+    });
+  }
+  try {
+    // await myFunc1();
+    let SmartContractAddress = await deploy("Spacios Brick", "SBT", 10001)
+    const propertyDataImg = { ...PropertyData, PropertyAvatar: PropertyAvatar, SmartContractAddress: SmartContractAddress };
+    const data = await Property.create(propertyDataImg); //data
+    const dataId = data.id;
+
+    await PropertyImage.forEach((element, index) => {
+      // console.log("74 ", element);
+      // console.log(element.x); // 100, 200, 300
+      PropertyImages.create({
+        propertyImage: element.path,
+        propertyId: dataId,
+      });
+    });
+
+
+    return await res.status(201).json({
+      message: `A new property has been created`,
+      data: data,
+      galleryImages: PropertyImages,
+    });
+  } catch (error) {
+    console.log("90 ", error);
+  }
+};
+
+// @desc    Delete a Property with the specified id in the request.
+// @route   Delete  /:id
+// @access  Public
+
+exports.delete = async(req, res) => {
+  const { id } = req.params;
+  let propertiesData= await Property.findOne({
+    where :{
+      id:id
+    }
+  })
+
+  console.log("propertiesData--->>>>",propertiesData)
+
+
+  Property.destroy({
+    where: { id: id },
+  })
+    .then((num) => {
+     
+      if (num == 1) {
+        res.status(200).json({
+          message: "Property was deleted successfully!",data:propertiesData
+        });
+      } else {
+        res.status(404).json({
+          message: `Cannot delete Property with id=${id}. Maybe property was not found!`,
+        });
+      }
+    })
+    .catch((err) => {
+      res.status(500).json({
+        message: "Could not delete Property with id=" + id,
+      });
+    });
+};
+
+exports.update = (req, res) => {
+  const { id } = req.params;
+
+  Property.update(req.body, {
+    where: { id: id },
+  })
+    .then((num) => {
+      if (num == 1) {
+        res.status(200).json({
+          message: "Property was updated successfully.",
+        });
+      } else {
+        res.status(404).json({
+          message: `Cannot update property with id=${id}. Maybe property was not found or req.body is empty!`,
+        });
+      }
+    })
+    .catch((err) => {
+      res.status(500).json({
+        message: "Error updating Property with id=" + id,
+      });
+    });
+};
+
+// @desc    Update the property status
+// @route   Patch /
+// @access  Public
+exports.updateStatus = async (req, res) => {
+  const { id } = req.params;
+
+  await Property.update(
+    { status: req.body.status },
+    {
+      where: {
+        id: id,
+      },
+    }
+  ).then((data) => {
+    if (data) {
+      res.status(404).send({
+        message: `Property Status updated`,
+      });
+    }
+  });
+};
+
+// @desc    Update the property sold status
+// @route   Patch /
+// @access  Public
+exports.updateSoldStatus = async (req, res) => {
+  const { id } = req.params;
+
+  await Property.update(
+    { sold: req.body.soldStatus },
+    {
+      where: {
+        id: id,
+      },
+    }
+  ).then((data) => {
+    if (data) {
+      res.status(404).send({
+        message: `Property Sold Status updated`,
+      });
+    }
+  });
+};
